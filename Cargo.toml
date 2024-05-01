@@ -1,0 +1,12 @@
+[package]
+name = "ebpf_proxy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.82"
+rebpf = "0.1.5"
+signal-hook = "0.3.17"
+
+[patch.crates-io]
+rebpf = {path = "/home/jewgad/.rhack/rebpf-0.1.5"}
