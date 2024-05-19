@@ -8,12 +8,20 @@ use std::path::Path;
 pub struct ebpf_proxy_context {
     bpf_object: libbpf::BpfObject,
     bpf_map: libbpf::BpfMap,
-    bpf_map_fd: libbpf::BpfMapFd<u32, u32, rebpf::map_layout::ScalarLayout>,
+    bpf_map_fd: libbpf::BpfMapFd<ipv4_lpm_key, u32, rebpf::map_layout::ScalarLayout>,
+    bpf_dest2src: libbpf::BpfMap,
+    bpf_dest2src_fd: libbpf::BpfMapFd<ipv4_lpm_key, u32, rebpf::map_layout::ScalarLayout>,
     bpf_prog: libbpf::BpfProgram,
 }
 
 struct ValuePointer {
     value: *const u32,
+}
+
+#[repr(C)]
+struct ipv4_lpm_key {
+    prefixlen: u32,
+    data: u32,
 }
 
 unsafe impl ReadPointer<u32, rebpf::map_layout::ScalarLayout> for ValuePointer {
@@ -38,9 +46,18 @@ impl ebpf_proxy_context {
             libbpf::bpf_object__find_map_by_name(&bpf_object, constants::EBPF_PROXY_MAP_NAME)
                 .map_err(|e| format!("Failed to find a map by name"))?;
 
-        let bpf_map_fd: libbpf::BpfMapFd<u32, u32, rebpf::map_layout::ScalarLayout> =
+        let bpf_map_fd: libbpf::BpfMapFd<ipv4_lpm_key, u32, rebpf::map_layout::ScalarLayout> =
             libbpf::bpf_object__find_map_fd_by_name(&bpf_object, constants::EBPF_PROXY_MAP_NAME)
                 .map_err(|e| format!("Failed to find map by name: {:?}", e))?;
+        
+        let bpf_dest2src: libbpf::BpfMap =
+            libbpf::bpf_object__find_map_by_name(&bpf_object, constants::EBPF_PROXY_DEST2SRC)
+                .map_err(|e| format!("Failed to find a map by name"))?;
+
+        let bpf_dest2src_fd : libbpf::BpfMapFd<ipv4_lpm_key, u32, rebpf::map_layout::ScalarLayout> =
+            libbpf::bpf_object__find_map_fd_by_name(&bpf_object, constants::EBPF_PROXY_DEST2SRC)
+                .map_err(|e| format!("Failed to find map by name: {:?}", e))?;
+
 
         let bpf_prog_fd = libbpf::bpf_program__fd(&bpf_prog)
             .map_err(|e| format!("Failed to get program file descriptor: {:?}", e))?;
@@ -60,21 +77,25 @@ impl ebpf_proxy_context {
             bpf_object,
             bpf_map,
             bpf_map_fd,
+            bpf_dest2src,
+            bpf_dest2src_fd,
             bpf_prog,
         })
     }
 
-    pub fn add_ipv4_pair(self: Self, origin_address: u32, destination_address: u32) {
-        let key: u32 = origin_address;
+    pub fn add_ipv4_pair(self: &Self, origin_address: u32, destination_address: u32) {
+        let key: ipv4_lpm_key = ipv4_lpm_key { prefixlen: 0x20, data: origin_address};
         let value: u32 = destination_address;
 
         let ptr = ValuePointer { value: &value };
 
-        let _ = libbpf::bpf_map_update_elem(
+        let ret = libbpf::bpf_map_update_elem(
             &self.bpf_map_fd,
             &key,
             ptr,
             libbpf::BpfUpdateElemFlags::ANY,
         );
+
+        println!("{:?}", ret);
     }
 }
