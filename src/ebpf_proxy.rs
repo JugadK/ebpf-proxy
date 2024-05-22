@@ -58,7 +58,6 @@ impl ebpf_proxy_context {
             libbpf::bpf_object__find_map_fd_by_name(&bpf_object, constants::EBPF_PROXY_DEST2SRC)
                 .map_err(|e| format!("Failed to find map by name: {:?}", e))?;
 
-
         let bpf_prog_fd = libbpf::bpf_program__fd(&bpf_prog)
             .map_err(|e| format!("Failed to get program file descriptor: {:?}", e))?;
 

@@ -8,6 +8,8 @@
 #include <linux/types.h>
 #include <bpf/bpf_helpers.h>
 #include <netinet/in.h>
+#include <linux/types.h>
+#include <bpf/bpf_helpers.h>
 
 #define PROXY_IP 0x00000000;
 
