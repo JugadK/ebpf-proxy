@@ -24,7 +24,7 @@ struct {
   __uint(type, BPF_MAP_TYPE_LPM_TRIE);
   __type(key, struct ipv4_lpm_key);
   __type(value, __u32);
-  __uint(max_entries, 0xFFFF);
+  __uint(max_entries, 0xFFF);
   __uint(map_flags, BPF_F_NO_PREALLOC);
 } src2destipv4 SEC(".maps");
 
@@ -32,7 +32,7 @@ struct {
   __uint(type, BPF_MAP_TYPE_LPM_TRIE);
   __type(key, struct ipv4_lpm_key);
   __type(value, __u32);
-  __uint(max_entries, 0xFFFF);
+  __uint(max_entries, 0xFFF);
   __uint(map_flags, BPF_F_NO_PREALLOC);
 } dest2srcipv4 SEC(".maps");
 
@@ -56,10 +56,10 @@ int xdp_pass_prog(struct xdp_md *ctx) {
 			return XDP_PASS; 
 
 
-    if(iph->protocol == IPPROTO_TCP && data+sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) > data_end) {
+    if(iph->protocol == IPPROTO_TCP && data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) <= data_end) {
       
-      struct tcphdr *tcph = data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr);
-
+      struct tcphdr *tcph = data + sizeof(struct ethhdr) + sizeof(struct iphdr);
+      
       if(tcph->dest == 7878) {
         return XDP_PASS;
       }
@@ -80,7 +80,7 @@ int xdp_pass_prog(struct xdp_md *ctx) {
 		ret = bpf_map_lookup_elem(&src2destipv4, &ipv4_key);
 
 		if (ret) {
-			bpf_printk("Looked up in bpf map source addr, dest addr is %x", *ret);
+			bpf_printk("PROXY HIT %x", *ret);
 
       __u32 proxy_ip = PROXY_IP;
 
@@ -88,8 +88,7 @@ int xdp_pass_prog(struct xdp_md *ctx) {
       iph->daddr = bpf_htons(*ret);
 
       return XDP_TX;
-		} else {
-    }
+		} 
 	}
 
   return XDP_PASS;
