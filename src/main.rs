@@ -20,7 +20,7 @@ fn setup_ctrlc_signal() {
             println!("Received signal {:?}", sig);
 
             rebpf::libbpf::bpf_set_link_xdp_fd(
-                &(get_interface(constants::INTERFACE_NAME).unwrap()),
+                &(get_interface(constants::get_interface()).unwrap()),
                 None,
                 rebpf::libbpf::XdpFlags::UPDATE_IF_NOEXIST,
             )

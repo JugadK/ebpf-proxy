@@ -61,7 +61,7 @@ impl ebpf_proxy_context {
         let bpf_prog_fd = libbpf::bpf_program__fd(&bpf_prog)
             .map_err(|e| format!("Failed to get program file descriptor: {:?}", e))?;
 
-        let interface = get_interface(constants::INTERFACE_NAME)
+        let interface = get_interface(constants::get_interface())
             .map_err(|_| "Failed to get network interface".to_string())?;
 
         libbpf::bpf_set_link_xdp_fd(
