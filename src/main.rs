@@ -68,19 +68,13 @@ fn ipv4_to_hex(ip: &str) -> Result<u32, String> {
 }
 
 fn main() {
+
     setup_ctrlc_signal();
 
     match ebpf_proxy::ebpf_proxy_context::new() {
         Ok(ebpf_proxy_context) => {
 
-            // let key : u32 = 0xc0a80105;
-            // let val : u32 = 0x2;
-            //
-            // println!("{:X}", key);
-            //
-            // ebpf_proxy_context.add_ipv4_pair(key, val);
-            
-            let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+            let listener = TcpListener::bind("0.0.0.0:7878").unwrap();
 
             println!("Server listening on port 7878");
 

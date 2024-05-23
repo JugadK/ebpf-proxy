@@ -124,6 +124,8 @@ dependencies = [
 [[package]]
 name = "rebpf"
 version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b11403635c5f44c69813308745acd9a20ea7266702cf33f966ed4cd2607ffb0"
 dependencies = [
  "bitflags",
  "function_name",

@@ -49,12 +49,12 @@ impl ebpf_proxy_context {
         let bpf_map_fd: libbpf::BpfMapFd<ipv4_lpm_key, u32, rebpf::map_layout::ScalarLayout> =
             libbpf::bpf_object__find_map_fd_by_name(&bpf_object, constants::EBPF_PROXY_MAP_NAME)
                 .map_err(|e| format!("Failed to find map by name: {:?}", e))?;
-        
+
         let bpf_dest2src: libbpf::BpfMap =
             libbpf::bpf_object__find_map_by_name(&bpf_object, constants::EBPF_PROXY_DEST2SRC)
                 .map_err(|e| format!("Failed to find a map by name"))?;
 
-        let bpf_dest2src_fd : libbpf::BpfMapFd<ipv4_lpm_key, u32, rebpf::map_layout::ScalarLayout> =
+        let bpf_dest2src_fd: libbpf::BpfMapFd<ipv4_lpm_key, u32, rebpf::map_layout::ScalarLayout> =
             libbpf::bpf_object__find_map_fd_by_name(&bpf_object, constants::EBPF_PROXY_DEST2SRC)
                 .map_err(|e| format!("Failed to find map by name: {:?}", e))?;
 
@@ -83,18 +83,44 @@ impl ebpf_proxy_context {
     }
 
     pub fn add_ipv4_pair(self: &Self, origin_address: u32, destination_address: u32) {
-        let key: ipv4_lpm_key = ipv4_lpm_key { prefixlen: 0x20, data: origin_address};
-        let value: u32 = destination_address;
+        // proxy works two ways, firt scope handles our original source too the destination, second
+        // scope handes from our destination back to our source
+        {
+            let key: ipv4_lpm_key = ipv4_lpm_key {
+                prefixlen: 0x20,
+                data: origin_address,
+            };
 
-        let ptr = ValuePointer { value: &value };
+            let value: u32 = destination_address;
 
-        let ret = libbpf::bpf_map_update_elem(
-            &self.bpf_map_fd,
-            &key,
-            ptr,
-            libbpf::BpfUpdateElemFlags::ANY,
-        );
+            let ptr = ValuePointer { value: &value };
 
-        println!("{:?}", ret);
+            let ret = libbpf::bpf_map_update_elem(
+                &self.bpf_map_fd,
+                &key,
+                ptr,
+                libbpf::BpfUpdateElemFlags::ANY,
+            );
+            println!("{:?}", ret);
+        }
+
+        {
+            let key: ipv4_lpm_key = ipv4_lpm_key {
+                prefixlen: 0x20,
+                data: destination_address,
+            };
+
+            let value: u32 = origin_address;
+
+            let ptr = ValuePointer { value: &value };
+
+            let ret = libbpf::bpf_map_update_elem(
+                &self.bpf_dest2src_fd,
+                &key,
+                ptr,
+                libbpf::BpfUpdateElemFlags::ANY,
+            );
+            println!("{:?}", ret);
+        }
     }
 }

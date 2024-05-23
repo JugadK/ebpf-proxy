@@ -11,7 +11,7 @@
 #include <linux/types.h>
 #include <bpf/bpf_helpers.h>
 
-#define PROXY_IP 0x00000000;
+#define PROXY_IP 0x12bf8b0c;
 
 char _license[] SEC("license") = "GPL";
 
@@ -61,6 +61,9 @@ int xdp_pass_prog(struct xdp_md *ctx) {
       struct tcphdr *tcph = data + sizeof(struct ethhdr) + sizeof(struct iphdr);
       
       if(tcph->dest == 7878) {
+        bpf_printk("ebpf_proxy API packet");
+        return XDP_PASS;
+      } else if(tcph->dest == 22){
         return XDP_PASS;
       }
     }
@@ -71,6 +74,7 @@ int xdp_pass_prog(struct xdp_md *ctx) {
 		bpf_printk("Source: %x Dest: %x", saddr, daddr);
 
 		__u32 *ret;
+		__u32 *destret;
 
     struct ipv4_lpm_key ipv4_key = {
             .prefixlen = 0x20, // Full IP Address
@@ -80,7 +84,7 @@ int xdp_pass_prog(struct xdp_md *ctx) {
 		ret = bpf_map_lookup_elem(&src2destipv4, &ipv4_key);
 
 		if (ret) {
-			bpf_printk("PROXY HIT %x", *ret);
+			bpf_printk("PROXY HIT %x src2dest", *ret);
 
       __u32 proxy_ip = PROXY_IP;
 
@@ -89,6 +93,19 @@ int xdp_pass_prog(struct xdp_md *ctx) {
 
       return XDP_TX;
 		} 
+
+    destret = bpf_map_lookup_elem(&dest2srcipv4, &ipv4_key);
+
+    if(destret) {
+      	bpf_printk("PROXY HIT dest2src %x", *destret);
+
+      __u32 proxy_ip = PROXY_IP;
+
+      iph->saddr = bpf_htons(proxy_ip);
+      iph->daddr = bpf_htons(*destret);
+
+      return XDP_TX;
+    }
 	}
 
   return XDP_PASS;
