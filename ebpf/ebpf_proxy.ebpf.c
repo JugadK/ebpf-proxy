@@ -55,7 +55,6 @@ int xdp_pass_prog(struct xdp_md *ctx) {
 		if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end)
 			return XDP_PASS; 
 
-
     if(iph->protocol == IPPROTO_TCP && data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) <= data_end) {
       
       struct tcphdr *tcph = data + sizeof(struct ethhdr) + sizeof(struct iphdr);
@@ -63,7 +62,11 @@ int xdp_pass_prog(struct xdp_md *ctx) {
       if(tcph->dest == 7878) {
         bpf_printk("ebpf_proxy API packet");
         return XDP_PASS;
+      } else if(tcph->source == 7878) {
+        return XDP_PASS;
       } else if(tcph->dest == 22){
+        return XDP_PASS;
+      } else if(tcph->source == 22) {
         return XDP_PASS;
       }
     }
