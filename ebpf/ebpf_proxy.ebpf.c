@@ -10,8 +10,9 @@
 #include <netinet/in.h>
 #include <linux/types.h>
 #include <bpf/bpf_helpers.h>
+#include <linux/pkt_cls.h>
 
-#define PROXY_IP 0x12bf8b0c;
+#define PROXY_IP 0x039067E8;
 
 char _license[] SEC("license") = "GPL";
 
@@ -36,24 +37,25 @@ struct {
   __uint(map_flags, BPF_F_NO_PREALLOC);
 } dest2srcipv4 SEC(".maps");
 
-SEC("xdp")
-int xdp_pass_prog(struct xdp_md *ctx) {
 
-  void *data_end = (void *)(long)ctx->data_end;
-  void *data = (void *)(long)ctx->data;
-  int size = data_end - data;
+SEC("tc")
+int tc_ingress(struct __sk_buff *ctx) {
+
+  void *data = (void *)(__u64)ctx->data;
+
+  void *data_end = (void *)(__u64)ctx->data_end;
 
   struct ethhdr *eth = data;
 
   if (data+sizeof(struct ethhdr) > data_end)
-    return XDP_PASS; 
+    return TC_ACT_OK; 
   
 	if (eth->h_proto == bpf_htons(ETH_P_IP)) {
     
 		struct iphdr *iph = (data + sizeof(struct ethhdr));
 
 		if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end)
-			return XDP_PASS; 
+			return TC_ACT_OK; 
 
     if(iph->protocol == IPPROTO_TCP && data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct tcphdr) <= data_end) {
       
@@ -61,13 +63,13 @@ int xdp_pass_prog(struct xdp_md *ctx) {
       
       if(tcph->dest == 7878) {
         bpf_printk("ebpf_proxy API packet");
-        return XDP_PASS;
+        return TC_ACT_OK;
       } else if(tcph->source == 7878) {
-        return XDP_PASS;
+        return TC_ACT_OK;
       } else if(tcph->dest == 22){
-        return XDP_PASS;
+        return TC_ACT_OK;
       } else if(tcph->source == 22) {
-        return XDP_PASS;
+        return TC_ACT_OK;
       }
     }
 
@@ -90,12 +92,14 @@ int xdp_pass_prog(struct xdp_md *ctx) {
 			bpf_printk("PROXY HIT %x src2dest", *ret);
 
       __u32 proxy_ip = PROXY_IP;
+      __u32 interface = 0x2;
 
       iph->saddr = bpf_htons(proxy_ip);
       iph->daddr = bpf_htons(*ret);
 
-      return XDP_TX;
-		} 
+
+      return bpf_redirect(interface, 0x0);
+	  } 
 
     destret = bpf_map_lookup_elem(&dest2srcipv4, &ipv4_key);
 
@@ -103,14 +107,15 @@ int xdp_pass_prog(struct xdp_md *ctx) {
       	bpf_printk("PROXY HIT dest2src %x", *destret);
 
       __u32 proxy_ip = PROXY_IP;
+      __u32 interface = 0x2;
 
       iph->saddr = bpf_htons(proxy_ip);
       iph->daddr = bpf_htons(*destret);
 
-      return XDP_TX;
+      return bpf_redirect(interface, 0x0);
     }
 	}
 
-  return XDP_PASS;
+  return TC_ACT_OK;
 }
 

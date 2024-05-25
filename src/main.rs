@@ -1,40 +1,11 @@
-use rebpf::interface::get_interface;
-use rebpf::libbpf;
-use signal_hook::{consts::signal::*, iterator::Signals};
 use std::io::Read;
 use std::net::Ipv4Addr;
 use std::net::TcpListener;
 use std::path::Path;
-use std::process;
 use std::string;
-use std::thread;
 
 mod constants;
 mod ebpf_proxy;
-
-fn setup_ctrlc_signal() {
-    let mut signals = Signals::new(&[SIGINT]).unwrap();
-
-    thread::spawn(move || {
-        for sig in signals.forever() {
-            println!("Received signal {:?}", sig);
-
-            rebpf::libbpf::bpf_set_link_xdp_fd(
-                &(get_interface(constants::get_interface()).unwrap()),
-                None,
-                rebpf::libbpf::XdpFlags::UPDATE_IF_NOEXIST,
-            )
-            .unwrap();
-
-            println!("Killed XDP link");
-
-            signal_hook::low_level::emulate_default_handler(SIGINT)
-                .expect("Failed to reset default signal handler");
-
-            process::exit(0);
-        }
-    });
-}
 
 fn handle_ebpf_proxy_req(
     ebpf_proxy_context: &ebpf_proxy::ebpf_proxy_context,
@@ -45,7 +16,7 @@ fn handle_ebpf_proxy_req(
     if request_type == "ADD" {
         match (ipv4_to_hex(origin_ip), ipv4_to_hex(destination_ip)) {
             (Ok(origin_ip_hex), Ok(dest_ip_hex)) => {
-                ebpf_proxy_context.add_ipv4_pair(origin_ip_hex, dest_ip_hex);
+                //ebpf_proxy_context.add_ipv4_pair(origin_ip_hex, dest_ip_hex);
                 println!("Added new ip pair Source:{}, Destination:{}",origin_ip, destination_ip);
                 println!("Added new ip hex Source:{:X}, Destination:{:X}",origin_ip_hex, dest_ip_hex);
             }
@@ -68,8 +39,6 @@ fn ipv4_to_hex(ip: &str) -> Result<u32, String> {
 }
 
 fn main() {
-
-    setup_ctrlc_signal();
 
     match ebpf_proxy::ebpf_proxy_context::new() {
         Ok(ebpf_proxy_context) => {

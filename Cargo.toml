@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.82"
-rebpf = "0.1.5"
+libbpf-sys = "1.4.2"
 signal-hook = "0.3.17"
 
